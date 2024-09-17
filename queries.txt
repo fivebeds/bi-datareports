@@ -1,0 +1,54 @@
+S3 Bucket Name : s3://kjatmkins/Netflix Userbase.csv
+Role ARN ( Application Resource Number ): arn:aws:iam::908027414913:role/kjatmkins
+
+CREATE DATABASE DEMO;
+CREATE SCHEMA DEMO_kjatmkins;
+
+CREATE OR REPLACE STORAGE integration aws_s3_integration
+type = external_stage
+storage_provider='S3'
+enabled=true
+storage_aws_role_arn='arn:aws:iam::908027414913:role/kjatmkins'
+storage_allowed_locations= ('s3://kjatmkins');
+
+SHOW INTEGRATIONS;
+
+DESC integration aws_s3_integration;
+
+GRANT usage on integration aws_s3_integration to role accountadmin;
+
+create or replace file format demo_format 
+type='CSV'
+field_delimiter='|'
+skip_header=1;
+
+CREATE or replace stage demo_aws_stage
+storage_integration = aws_s3_integration
+file_format = demo_format
+url = 's3://kjatmkins' ;
+
+List @demo_aws_stage;
+remove @demo_aws_stage/
+
+CREATE OR REPLACE TEMPORARY TABLE demo_Netflix_Userbase (
+    id INTEGER,
+    last_name STRING,
+    first_name STRING,
+    company STRING,
+    email STRING,
+    workphone STRING,
+    cellphone STRING,
+    streetaddress STRING,
+    city STRING,
+    postalcode STRING
+);
+
+SELECT * FROM demo_Netflix_Userbase limit 10;
+
+COPY INTO DEMO_NETFLIX_USERBASE
+from @demo_aws_stage
+
+COPY INTO demo_Netflix_Userbase
+FROM @demo_aws_stage/Netflix_Userbase.csv
+FILE_FORMAT = (TYPE = 'CSV')
+ON_ERROR = 'SKIP_FILE' / 'CONTINUE';
